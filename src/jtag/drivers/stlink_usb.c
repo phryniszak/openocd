@@ -299,6 +299,7 @@ struct stlink_usb_handle_s {
 
 #define STLINK_TRACE_SIZE               4096
 #define STLINK_TRACE_MAX_HZ             2000000
+#define STLINKV3_TRACE_MAX_HZ           24000000
 
 #define STLINK_V3_MAX_FREQ_NB               10
 
@@ -2989,6 +2990,8 @@ int stlink_config_trace(void *handle, bool enabled,
 {
 	struct stlink_usb_handle_s *h = handle;
 	uint16_t presc;
+	unsigned int trace_freq_max = STLINK_TRACE_MAX_HZ;
+
 
 	if (enabled && (!(h->version.flags & STLINK_F_HAS_TRACE) ||
 			pin_protocol != TPIU_PIN_PROTOCOL_ASYNC_UART)) {
@@ -3001,16 +3004,20 @@ int stlink_config_trace(void *handle, bool enabled,
 		return ERROR_OK;
 	}
 
-	if (*trace_freq > STLINK_TRACE_MAX_HZ) {
+	if (*trace_freq > trace_freq_max) {
 		LOG_ERROR("ST-LINK doesn't support SWO frequency higher than %u",
-			  STLINK_TRACE_MAX_HZ);
+			  trace_freq_max);
 		return ERROR_FAIL;
 	}
 
 	stlink_usb_trace_disable(h);
 
+	if (h->version.stlink == 3) {
+		trace_freq_max = STLINKV3_TRACE_MAX_HZ;
+	}
+
 	if (!*trace_freq)
-		*trace_freq = STLINK_TRACE_MAX_HZ;
+		*trace_freq = trace_freq_max;
 
 	presc = traceclkin_freq / *trace_freq;
 
